@@ -692,6 +692,8 @@ const timeLayout = {
 };
 
 // =========== MAIN DRAW ===========
+let plotInitialized = false;
+
 function redrawAll() {
   const sys = SYSTEMS[currentSystem];
   const p = paramValues;
@@ -727,24 +729,30 @@ function redrawAll() {
   }
 
   const allTraces = [vfTrace, ...ncTraces, ...fpTraces, ...trajTraces];
-  Plotly.react('phasePlot', allTraces, phaseLayout(), {responsive:true, scrollZoom:true});
+  const pLayout = phaseLayout();
 
-  // Time series (last trajectory)
+  // Time series data
+  let timeTraces = [];
   if(trajectories.length > 0) {
     const last = trajectories[trajectories.length-1];
-    const col = TRAJ_COLORS[(trajectories.length-1) % TRAJ_COLORS.length];
-    Plotly.react('timePlot', [
+    timeTraces = [
       {x:last.ts, y:last.xs, mode:'lines', name:'x(t)', line:{color:'#6c8cff',width:2}},
       {x:last.ts, y:last.ys, mode:'lines', name:'y(t)', line:{color:'#ff6c8c',width:2}}
-    ], timeLayout, {responsive:true, scrollZoom:true});
-  } else {
-    Plotly.react('timePlot', [], timeLayout, {responsive:true, scrollZoom:true});
+    ];
   }
+  const tLayout = JSON.parse(JSON.stringify(timeLayout));
 
-  // Re-attach click handler
-  const plotEl = document.getElementById('phasePlot');
-  plotEl.removeAllListeners && plotEl.removeAllListeners('plotly_click');
-  plotEl.on('plotly_click', handleClick);
+  if(!plotInitialized) {
+    Plotly.newPlot('phasePlot', allTraces, pLayout, {responsive:true, scrollZoom:true});
+    Plotly.newPlot('timePlot', timeTraces, tLayout, {responsive:true, scrollZoom:true});
+    // Attach click handler once
+    const plotEl = document.getElementById('phasePlot');
+    plotEl.on('plotly_click', handleClick);
+    plotInitialized = true;
+  } else {
+    Plotly.react('phasePlot', allTraces, pLayout, {responsive:true, scrollZoom:true});
+    Plotly.react('timePlot', timeTraces, tLayout, {responsive:true, scrollZoom:true});
+  }
 }
 
 function handleClick(data) {
@@ -770,11 +778,14 @@ function clearTrajectories() {
 function selectSystem(idx) {
   currentSystem = idx;
   trajectories = [];
+  plotInitialized = false;
   const sys = SYSTEMS[currentSystem];
   document.getElementById('systemTitle').textContent = sys.name;
   document.getElementById('equationDisplay').textContent = sys.eq;
   buildSelector();
   buildSliders();
+  Plotly.purge('phasePlot');
+  Plotly.purge('timePlot');
   redrawAll();
 }
 
