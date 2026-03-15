@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODE Phase Portraits</title>
+<script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a24;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --muted: #8888a0;
+  --accent: #6c8cff;
+  --accent2: #ff6c8c;
+  --accent3: #6cffc8;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+header p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+.selector-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.pill:hover { border-color: var(--accent); color: var(--text); }
+.pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--accent);
+}
+.equations {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  font-family: 'Courier New', monospace;
+}
+.sliders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.slider-group label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+.slider-group label span.val { color: var(--accent); font-weight: 600; }
+.slider-group input[type="range"] {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+}
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.slider-group input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.info-badge {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+}
+.info-badge .label { color: var(--muted); }
+.info-badge .value { color: var(--accent3); font-weight: 600; }
+.plot-container { position: relative; }
+.click-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  background: rgba(26,26,36,0.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 10;
+}
+.controls-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.35rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 768px) {
+  .two-col { grid-template-columns: 1fr; }
+  header h1 { font-size: 1.5rem; }
+}
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.legend-item { display: flex; align-items: center; gap: 0.3rem; }
+.legend-swatch {
+  width: 18px; height: 3px; border-radius: 2px;
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ODE Phase Portraits</h1>
+  <p>Interactive phase portraits for 2D dynamical systems</p>
+</header>
+<div class="container">
+  <div class="selector-row" id="systemSelector"></div>
+
+  <div class="card">
+    <h2 id="systemTitle">Simple Harmonic Oscillator</h2>
+    <div class="equations" id="equationDisplay"></div>
+    <div class="sliders-grid" id="slidersContainer"></div>
+    <div class="info-row" id="fixedPointsInfo"></div>
+  </div>
+
+  <div class="card plot-container">
+    <div id="phasePlot" style="width:100%;height:550px;"></div>
+    <div class="click-hint">Click to add trajectory</div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div> Vector field</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--accent2);height:2px;border-top:2px dashed var(--accent2)"></div> x-nullcline</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--accent3);height:2px;border-top:2px dashed var(--accent3)"></div> y-nullcline</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Stable FP</div>
+      <div class="legend-item"><div class="legend-dot" style="border:2px solid var(--accent2);background:transparent"></div> Unstable FP</div>
+    </div>
+    <div class="controls-bar">
+      <button class="btn" onclick="clearTrajectories()">Clear trajectories</button>
+      <button class="btn" onclick="redrawAll()">Redraw</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Time Series</h2>
+    <div id="timePlot" style="width:100%;height:280px;"></div>
+  </div>
+</div>
+
+<script>
+// =========== SYSTEM DEFINITIONS ===========
+const SYSTEMS = [
+  {
+    name: "Simple Harmonic Oscillator",
+    eq: "dx/dt = y\ndy/dt = -\u03C9\u00B2 x",
+    params: [{id:"omega",label:"\u03C9",min:0.1,max:5,step:0.1,val:1}],
+    f: (x,y,p) => [y, -p.omega*p.omega*x],
+    nullclines: (p,R) => {
+      // dx/dt=0 => y=0; dy/dt=0 => x=0
+      return {xnull:[{type:'h',val:0}], ynull:[{type:'v',val:0}]};
+    },
+    fixedPts: (p) => [[0,0]],
+    range: [-4,4,-4,4]
+  },
+  {
+    name: "Damped Oscillator",
+    eq: "dx/dt = y\ndy/dt = -2\u03B6\u03C9 y - \u03C9\u00B2 x",
+    params: [
+      {id:"omega",label:"\u03C9",min:0.1,max:5,step:0.1,val:1},
+      {id:"zeta",label:"\u03B6",min:0,max:2,step:0.05,val:0.3}
+    ],
+    f: (x,y,p) => [y, -2*p.zeta*p.omega*y - p.omega*p.omega*x],
+    nullclines: (p,R) => ({xnull:[{type:'h',val:0}], ynull:[{type:'line',m:-p.omega/(2*p.zeta+1e-12),b:0}]}),
+    fixedPts: (p) => [[0,0]],
+    range: [-4,4,-4,4]
+  },
+  {
+    name: "Van der Pol Oscillator",
+    eq: "dx/dt = y\ndy/dt = \u03BC(1 - x\u00B2)y - x",
+    params: [{id:"mu",label:"\u03BC",min:0.1,max:5,step:0.1,val:1}],
+    f: (x,y,p) => [y, p.mu*(1-x*x)*y - x],
+    nullclines: (p,R) => ({xnull:[{type:'h',val:0}], ynull:[{type:'curve', fn: x => x/(p.mu*(1-x*x+1e-12))}]}),
+    fixedPts: (p) => [[0,0]],
+    range: [-5,5,-5,5]
+  },
+  {
+    name: "Lotka-Volterra",
+    eq: "dx/dt = \u03B1x - \u03B2xy\ndy/dt = \u03B4xy - \u03B3y",
+    params: [
+      {id:"alpha",label:"\u03B1",min:0.1,max:3,step:0.1,val:1.0},
+      {id:"beta",label:"\u03B2",min:0.1,max:3,step:0.1,val:0.5},
+      {id:"delta",label:"\u03B4",min:0.1,max:3,step:0.1,val:0.5},
+      {id:"gamma",label:"\u03B3",min:0.1,max:3,step:0.1,val:1.0}
+    ],
+    f: (x,y,p) => [p.alpha*x - p.beta*x*y, p.delta*x*y - p.gamma*y],
+    nullclines: (p,R) => ({
+      xnull:[{type:'v',val:0},{type:'h',val:p.alpha/p.beta}],
+      ynull:[{type:'h',val:0},{type:'v',val:p.gamma/p.delta}]
+    }),
+    fixedPts: (p) => [[0,0],[p.gamma/p.delta, p.alpha/p.beta]],
+    range: [0,6,0,6]
+  },
+  {
+    name: "Damped Pendulum",
+    eq: "d\u03B8/dt = \u03C9\nd\u03C9/dt = -(g/L)sin\u03B8 - b\u03C9",
+    params: [
+      {id:"gL",label:"g/L",min:0.1,max:5,step:0.1,val:1},
+      {id:"b",label:"b (damping)",min:0,max:2,step:0.05,val:0.3}
+    ],
+    f: (x,y,p) => [y, -p.gL*Math.sin(x) - p.b*y],
+    nullclines: (p,R) => ({xnull:[{type:'h',val:0}], ynull:[{type:'curve', fn: x => -p.gL*Math.sin(x)/(p.b+1e-12)}]}),
+    fixedPts: (p) => [[0,0],[Math.PI,0],[-Math.PI,0]],
+    range: [-5,5,-4,4]
+  },
+  {
+    name: "Duffing Oscillator",
+    eq: "dx/dt = y\ndy/dt = x - x\u00B3 - \u03B4y",
+    params: [{id:"delta",label:"\u03B4",min:0,max:2,step:0.05,val:0.3}],
+    f: (x,y,p) => [y, x - x*x*x - p.delta*y],
+    nullclines: (p,R) => ({xnull:[{type:'h',val:0}], ynull:[{type:'curve', fn: x => (x - x*x*x)/(p.delta+1e-12)}]}),
+    fixedPts: (p) => [[0,0],[1,0],[-1,0]],
+    range: [-3,3,-3,3]
+  },
+  {
+    name: "FitzHugh-Nagumo",
+    eq: "dv/dt = v - v\u00B3/3 - w + I\ndw/dt = \u03B5(v + a - bw)",
+    params: [
+      {id:"I",label:"I",min:-1,max:2,step:0.05,val:0.5},
+      {id:"eps",label:"\u03B5",min:0.01,max:1,step:0.01,val:0.08},
+      {id:"a",label:"a",min:0,max:1.5,step:0.05,val:0.7},
+      {id:"b",label:"b",min:0,max:1.5,step:0.05,val:0.8}
+    ],
+    f: (x,y,p) => [x - x*x*x/3 - y + p.I, p.eps*(x + p.a - p.b*y)],
+    nullclines: (p,R) => ({
+      xnull:[{type:'curve', fn: x => x - x*x*x/3 + p.I}],
+      ynull:[{type:'curve', fn: x => (x + p.a)/p.b}]
+    }),
+    fixedPts: (p) => findFixedPointsNumerically(SYSTEMS[6], p),
+    range: [-3,3,-2,3]
+  },
+  {
+    name: "Saddle Node",
+    eq: "dx/dt = \u03BC + x\u00B2\ndy/dt = -y",
+    params: [{id:"mu",label:"\u03BC",min:-2,max:2,step:0.05,val:-0.5}],
+    f: (x,y,p) => [p.mu + x*x, -y],
+    nullclines: (p,R) => ({
+      xnull: p.mu<=0 ? [{type:'v',val:Math.sqrt(-p.mu)},{type:'v',val:-Math.sqrt(-p.mu)}] : [],
+      ynull:[{type:'h',val:0}]
+    }),
+    fixedPts: (p) => {
+      if(p.mu > 0) return [];
+      const s = Math.sqrt(-p.mu);
+      if(p.mu === 0) return [[0,0]];
+      return [[-s,0],[s,0]];
+    },
+    range: [-3,3,-3,3]
+  },
+  {
+    name: "Hopf Bifurcation",
+    eq: "dx/dt = \u03BCx - y - x(x\u00B2+y\u00B2)\ndy/dt = x + \u03BCy - y(x\u00B2+y\u00B2)",
+    params: [{id:"mu",label:"\u03BC",min:-1,max:1,step:0.05,val:0.2}],
+    f: (x,y,p) => {
+      const r2 = x*x+y*y;
+      return [p.mu*x - y - x*r2, x + p.mu*y - y*r2];
+    },
+    nullclines: (p,R) => ({xnull:[], ynull:[]}),
+    fixedPts: (p) => [[0,0]],
+    range: [-2,2,-2,2]
+  },
+  {
+    name: "Double Well Potential",
+    eq: "dx/dt = y\ndy/dt = x - x\u00B3 - \u03B4y",
+    params: [{id:"delta",label:"\u03B4",min:0,max:2,step:0.05,val:0.1}],
+    f: (x,y,p) => [y, x - x*x*x - p.delta*y],
+    nullclines: (p,R) => ({xnull:[{type:'h',val:0}], ynull:[{type:'curve', fn: x => (x-x*x*x)/(p.delta+1e-12)}]}),
+    fixedPts: (p) => [[0,0],[1,0],[-1,0]],
+    range: [-2.5,2.5,-2.5,2.5]
+  }
+];
+
+let currentSystem = 0;
+let trajectories = [];
+let paramValues = {};
+
+// =========== NUMERICAL FIXED POINT FINDER ===========
+function findFixedPointsNumerically(sys, p) {
+  const pts = [];
+  const [xmin,xmax,ymin,ymax] = sys.range;
+  const step = 0.3;
+  for(let xi=xmin; xi<=xmax; xi+=step) {
+    for(let yi=ymin; yi<=ymax; yi+=step) {
+      const fp = newtonSolve(sys.f, xi, yi, p);
+      if(fp) {
+        let dup = false;
+        for(const q of pts) {
+          if(Math.abs(q[0]-fp[0])<0.05 && Math.abs(q[1]-fp[1])<0.05) { dup=true; break; }
+        }
+        if(!dup) pts.push(fp);
+      }
+    }
+  }
+  return pts;
+}
+
+function newtonSolve(f, x0, y0, p, tol=1e-8, maxIter=50) {
+  let x=x0, y=y0;
+  for(let i=0; i<maxIter; i++) {
+    const [fx,fy] = f(x,y,p);
+    if(Math.abs(fx)<tol && Math.abs(fy)<tol) return [x,y];
+    const h = 1e-7;
+    const [fx1] = f(x+h,y,p); const [fx2,fy2a] = f(x,y+h,p);
+    const [_,fy1] = f(x+h,y,p); const [__,fy2] = f(x,y+h,p);
+    const dfdx = (fx1-fx)/h, dfdy = (fx2-fx)/h;
+    const dgdx = (fy1-fy)/h, dgdy = (fy2-fy)/h;
+    const det = dfdx*dgdy - dfdy*dgdx;
+    if(Math.abs(det)<1e-14) return null;
+    const dx = (dgdy*fx - dfdy*fy)/det;
+    const dy = (-dgdx*fx + dfdx*fy)/det;
+    x -= dx; y -= dy;
+    if(Math.abs(dx)<tol && Math.abs(dy)<tol) {
+      const [cx,cy] = f(x,y,p);
+      if(Math.abs(cx)<1e-6 && Math.abs(cy)<1e-6) return [x,y];
+      return null;
+    }
+  }
+  return null;
+}
+
+// =========== JACOBIAN & CLASSIFICATION ===========
+function jacobian(f, x, y, p) {
+  const h = 1e-7;
+  const [f0,g0] = f(x,y,p);
+  const [f1] = f(x+h,y,p);
+  const [f2] = f(x,y+h,p);
+  const [_,g1] = f(x+h,y,p);
+  const [__,g2] = f(x,y+h,p);
+  return [[(f1-f0)/h, (f2-f0)/h], [(g1-g0)/h, (g2-g0)/h]];
+}
+
+function eigenvalues(J) {
+  const tr = J[0][0]+J[1][1];
+  const det = J[0][0]*J[1][1]-J[0][1]*J[1][0];
+  const disc = tr*tr - 4*det;
+  if(disc >= 0) {
+    return {l1: (tr+Math.sqrt(disc))/2, l2: (tr-Math.sqrt(disc))/2, complex: false};
+  } else {
+    return {real: tr/2, imag: Math.sqrt(-disc)/2, complex: true};
+  }
+}
+
+function classify(eig) {
+  if(eig.complex) {
+    if(Math.abs(eig.real)<1e-6) return {type:"Center", stable: null};
+    return {type: eig.real<0 ? "Stable spiral" : "Unstable spiral", stable: eig.real<0};
+  }
+  if(eig.l1 * eig.l2 < 0) return {type:"Saddle", stable: false};
+  if(eig.l1 < 0 && eig.l2 < 0) return {type:"Stable node", stable: true};
+  if(eig.l1 > 0 && eig.l2 > 0) return {type:"Unstable node", stable: false};
+  if(Math.abs(eig.l1)<1e-8 || Math.abs(eig.l2)<1e-8) return {type:"Non-isolated", stable: null};
+  return {type:"Node", stable: eig.l1+eig.l2<0};
+}
+
+// =========== RK4 INTEGRATION ===========
+function rk4Integrate(f, x0, y0, p, dt, steps) {
+  const xs=[x0], ys=[y0], ts=[0];
+  let x=x0, y=y0, t=0;
+  for(let i=0; i<steps; i++) {
+    const [k1x,k1y] = f(x,y,p);
+    const [k2x,k2y] = f(x+dt/2*k1x, y+dt/2*k1y, p);
+    const [k3x,k3y] = f(x+dt/2*k2x, y+dt/2*k2y, p);
+    const [k4x,k4y] = f(x+dt*k3x, y+dt*k3y, p);
+    let dx = dt/6*(k1x+2*k2x+2*k3x+k4x);
+    let dy = dt/6*(k1y+2*k2y+2*k3y+k4y);
+    // Adaptive step limiting
+    const mag = Math.sqrt(dx*dx+dy*dy);
+    const maxStep = 0.5;
+    if(mag > maxStep) { dx *= maxStep/mag; dy *= maxStep/mag; }
+    x += dx; y += dy; t += dt;
+    // Bail if diverging
+    if(Math.abs(x)>100 || Math.abs(y)>100) break;
+    xs.push(x); ys.push(y); ts.push(t);
+  }
+  return {xs, ys, ts};
+}
+
+// =========== VECTOR FIELD ===========
+function computeVectorField(sys, p) {
+  const [xmin,xmax,ymin,ymax] = sys.range;
+  const N = 20;
+  const dx = (xmax-xmin)/N, dy = (ymax-ymin)/N;
+  const xArr=[], yArr=[], uArr=[], vArr=[];
+  for(let i=0; i<=N; i++) {
+    for(let j=0; j<=N; j++) {
+      const x = xmin + i*dx, y = ymin + j*dy;
+      const [u,v] = sys.f(x,y,p);
+      xArr.push(x); yArr.push(y);
+      uArr.push(u); vArr.push(v);
+    }
+  }
+  return {xArr, yArr, uArr, vArr};
+}
+
+// =========== NULLCLINE TRACES ===========
+function nullclineTraces(sys, p) {
+  const traces = [];
+  const [xmin,xmax,ymin,ymax] = sys.range;
+  const nc = sys.nullclines(p, sys.range);
+
+  // x-nullclines (dx/dt = 0) in accent2
+  for(const c of nc.xnull) {
+    if(c.type==='h') {
+      traces.push({x:[xmin,xmax],y:[c.val,c.val],mode:'lines',line:{color:'#ff6c8c',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='v') {
+      traces.push({x:[c.val,c.val],y:[ymin,ymax],mode:'lines',line:{color:'#ff6c8c',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='line') {
+      traces.push({x:[xmin,xmax],y:[c.m*xmin+c.b, c.m*xmax+c.b],mode:'lines',line:{color:'#ff6c8c',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='curve') {
+      const pts = 200;
+      const xs=[], ys=[];
+      for(let i=0;i<=pts;i++) {
+        const x = xmin + (xmax-xmin)*i/pts;
+        const y = c.fn(x);
+        if(isFinite(y) && y>=ymin-2 && y<=ymax+2) { xs.push(x); ys.push(y); }
+        else { xs.push(null); ys.push(null); }
+      }
+      traces.push({x:xs,y:ys,mode:'lines',line:{color:'#ff6c8c',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip',connectgaps:false});
+    }
+  }
+
+  // y-nullclines (dy/dt = 0) in accent3
+  for(const c of nc.ynull) {
+    if(c.type==='h') {
+      traces.push({x:[xmin,xmax],y:[c.val,c.val],mode:'lines',line:{color:'#6cffc8',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='v') {
+      traces.push({x:[c.val,c.val],y:[ymin,ymax],mode:'lines',line:{color:'#6cffc8',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='line') {
+      traces.push({x:[xmin,xmax],y:[c.m*xmin+c.b, c.m*xmax+c.b],mode:'lines',line:{color:'#6cffc8',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip'});
+    } else if(c.type==='curve') {
+      const pts = 200;
+      const xs=[], ys=[];
+      for(let i=0;i<=pts;i++) {
+        const x = xmin + (xmax-xmin)*i/pts;
+        const y = c.fn(x);
+        if(isFinite(y) && y>=ymin-2 && y<=ymax+2) { xs.push(x); ys.push(y); }
+        else { xs.push(null); ys.push(null); }
+      }
+      traces.push({x:xs,y:ys,mode:'lines',line:{color:'#6cffc8',width:2,dash:'dash'},showlegend:false,hoverinfo:'skip',connectgaps:false});
+    }
+  }
+  return traces;
+}
+
+// =========== FIXED POINT TRACES ===========
+function fixedPointTraces(sys, p) {
+  const fps = typeof sys.fixedPts === 'function' ? sys.fixedPts(p) : sys.fixedPts;
+  const stableX=[], stableY=[], unstableX=[], unstableY=[];
+  const infoBadges = [];
+
+  for(const fp of fps) {
+    const J = jacobian(sys.f, fp[0], fp[1], p);
+    const eig = eigenvalues(J);
+    const cl = classify(eig);
+    let eigStr;
+    if(eig.complex) {
+      eigStr = `${eig.real.toFixed(3)} \u00B1 ${eig.imag.toFixed(3)}i`;
+    } else {
+      eigStr = `${eig.l1.toFixed(3)}, ${eig.l2.toFixed(3)}`;
+    }
+    infoBadges.push({fp, cl, eigStr});
+    if(cl.stable === true) { stableX.push(fp[0]); stableY.push(fp[1]); }
+    else { unstableX.push(fp[0]); unstableY.push(fp[1]); }
+  }
+
+  const traces = [];
+  if(stableX.length) traces.push({
+    x:stableX, y:stableY, mode:'markers',
+    marker:{size:12, color:'#6c8cff', symbol:'circle'},
+    showlegend:false, hoverinfo:'text',
+    text: stableX.map((_,i) => {
+      const info = infoBadges.find(b=>b.cl.stable===true && Math.abs(b.fp[0]-stableX[i])<1e-6 && Math.abs(b.fp[1]-stableY[i])<1e-6);
+      return info ? `(${info.fp[0].toFixed(2)}, ${info.fp[1].toFixed(2)})\n${info.cl.type}\n\u03BB = ${info.eigStr}` : '';
+    })
+  });
+  if(unstableX.length) traces.push({
+    x:unstableX, y:unstableY, mode:'markers',
+    marker:{size:12, color:'#ff6c8c', symbol:'circle-open', line:{width:2.5, color:'#ff6c8c'}},
+    showlegend:false, hoverinfo:'text',
+    text: unstableX.map((_,i) => {
+      const info = infoBadges.find(b=>b.cl.stable!==true && Math.abs(b.fp[0]-unstableX[i])<1e-6 && Math.abs(b.fp[1]-unstableY[i])<1e-6);
+      return info ? `(${info.fp[0].toFixed(2)}, ${info.fp[1].toFixed(2)})\n${info.cl.type}\n\u03BB = ${info.eigStr}` : '';
+    })
+  });
+
+  return {traces, infoBadges};
+}
+
+// =========== ARROW VECTOR FIELD TRACE ===========
+function vectorFieldTrace(vf, sys) {
+  const [xmin,xmax,ymin,ymax] = sys.range;
+  const scale = Math.min(xmax-xmin, ymax-ymin) / 22;
+  const xs=[], ys=[];
+  // Build lines: each arrow is 3 points (base, tip, null) + arrowhead
+  for(let i=0; i<vf.xArr.length; i++) {
+    const u=vf.uArr[i], v=vf.vArr[i];
+    const mag = Math.sqrt(u*u+v*v);
+    if(mag<1e-10) continue;
+    const nx = u/mag, ny = v/mag;
+    const len = Math.min(mag, 2) * scale * 0.4;
+    const x0=vf.xArr[i], y0=vf.yArr[i];
+    const x1=x0+nx*len, y1=y0+ny*len;
+    // shaft
+    xs.push(x0,x1,null);
+    ys.push(y0,y1,null);
+    // arrowhead
+    const hs = len*0.3;
+    const ax = -nx*hs - ny*hs*0.5, ay = -ny*hs + nx*hs*0.5;
+    const bx = -nx*hs + ny*hs*0.5, by = -ny*hs - nx*hs*0.5;
+    xs.push(x1+ax, x1, x1+bx, null);
+    ys.push(y1+ay, y1, y1+by, null);
+  }
+  return {
+    x:xs, y:ys, mode:'lines',
+    line:{color:'rgba(108,140,255,0.5)', width:1.2},
+    showlegend:false, hoverinfo:'skip'
+  };
+}
+
+// =========== TRAJECTORY COLORS ===========
+const TRAJ_COLORS = ['#ffaa44','#44ddff','#ff44aa','#aaff44','#ff8844','#44ffaa','#aa44ff','#ffff44'];
+
+// =========== BUILD UI ===========
+function buildSelector() {
+  const row = document.getElementById('systemSelector');
+  row.innerHTML = '';
+  SYSTEMS.forEach((s,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (i===currentSystem?' active':'');
+    btn.textContent = s.name;
+    btn.onclick = () => selectSystem(i);
+    row.appendChild(btn);
+  });
+}
+
+function buildSliders() {
+  const sys = SYSTEMS[currentSystem];
+  const container = document.getElementById('slidersContainer');
+  container.innerHTML = '';
+  paramValues = {};
+  for(const p of sys.params) {
+    paramValues[p.id] = p.val;
+    const div = document.createElement('div');
+    div.className = 'slider-group';
+    div.innerHTML = `<label><span>${p.label}</span><span class="val" id="val_${p.id}">${p.val.toFixed(2)}</span></label>
+      <input type="range" id="sl_${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}">`;
+    container.appendChild(div);
+    const sl = div.querySelector('input');
+    sl.addEventListener('input', () => {
+      paramValues[p.id] = parseFloat(sl.value);
+      document.getElementById('val_'+p.id).textContent = parseFloat(sl.value).toFixed(2);
+      redrawAll();
+    });
+  }
+}
+
+function updateInfo(infoBadges) {
+  const row = document.getElementById('fixedPointsInfo');
+  row.innerHTML = '';
+  for(const b of infoBadges) {
+    const d = document.createElement('div');
+    d.className = 'info-badge';
+    d.innerHTML = `<span class="label">FP </span><span class="value">(${b.fp[0].toFixed(2)}, ${b.fp[1].toFixed(2)})</span>
+      <span class="label"> &mdash; </span><span class="value">${b.cl.type}</span>
+      <span class="label"> &mdash; \u03BB = </span><span class="value">${b.eigStr}</span>`;
+    row.appendChild(d);
+  }
+}
+
+// =========== PLOT LAYOUT ===========
+const phaseLayout = () => {
+  const sys = SYSTEMS[currentSystem];
+  const [xmin,xmax,ymin,ymax] = sys.range;
+  return {
+    xaxis:{range:[xmin,xmax],gridcolor:'#2a2a3a',zerolinecolor:'#3a3a4a',title:{text:'x',font:{color:'#8888a0'}},tickfont:{color:'#8888a0'}},
+    yaxis:{range:[ymin,ymax],gridcolor:'#2a2a3a',zerolinecolor:'#3a3a4a',title:{text:'y',font:{color:'#8888a0'}},tickfont:{color:'#8888a0'},scaleanchor:'x'},
+    paper_bgcolor:'#1a1a24',
+    plot_bgcolor:'#0f0f13',
+    margin:{l:50,r:20,t:20,b:50},
+    showlegend:false,
+    dragmode:'pan'
+  };
+};
+
+const timeLayout = {
+  xaxis:{gridcolor:'#2a2a3a',zerolinecolor:'#3a3a4a',title:{text:'t',font:{color:'#8888a0'}},tickfont:{color:'#8888a0'}},
+  yaxis:{gridcolor:'#2a2a3a',zerolinecolor:'#3a3a4a',tickfont:{color:'#8888a0'}},
+  paper_bgcolor:'#1a1a24',
+  plot_bgcolor:'#0f0f13',
+  margin:{l:50,r:20,t:10,b:40},
+  showlegend:true,
+  legend:{font:{color:'#8888a0'},bgcolor:'rgba(0,0,0,0)'},
+  dragmode:'pan'
+};
+
+// =========== MAIN DRAW ===========
+function redrawAll() {
+  const sys = SYSTEMS[currentSystem];
+  const p = paramValues;
+
+  // Vector field
+  const vf = computeVectorField(sys, p);
+  const vfTrace = vectorFieldTrace(vf, sys);
+
+  // Nullclines
+  const ncTraces = nullclineTraces(sys, p);
+
+  // Fixed points
+  const {traces: fpTraces, infoBadges} = fixedPointTraces(sys, p);
+  updateInfo(infoBadges);
+
+  // Trajectory traces
+  const trajTraces = [];
+  for(let i=0; i<trajectories.length; i++) {
+    const traj = trajectories[i];
+    const col = TRAJ_COLORS[i % TRAJ_COLORS.length];
+    trajTraces.push({
+      x:traj.xs, y:traj.ys, mode:'lines',
+      line:{color:col, width:2},
+      showlegend:false, hoverinfo:'skip'
+    });
+    // start marker
+    trajTraces.push({
+      x:[traj.xs[0]], y:[traj.ys[0]], mode:'markers',
+      marker:{size:7, color:col, symbol:'diamond'},
+      showlegend:false, hoverinfo:'text',
+      text:[`IC: (${traj.xs[0].toFixed(2)}, ${traj.ys[0].toFixed(2)})`]
+    });
+  }
+
+  const allTraces = [vfTrace, ...ncTraces, ...fpTraces, ...trajTraces];
+  Plotly.react('phasePlot', allTraces, phaseLayout(), {responsive:true, scrollZoom:true});
+
+  // Time series (last trajectory)
+  if(trajectories.length > 0) {
+    const last = trajectories[trajectories.length-1];
+    const col = TRAJ_COLORS[(trajectories.length-1) % TRAJ_COLORS.length];
+    Plotly.react('timePlot', [
+      {x:last.ts, y:last.xs, mode:'lines', name:'x(t)', line:{color:'#6c8cff',width:2}},
+      {x:last.ts, y:last.ys, mode:'lines', name:'y(t)', line:{color:'#ff6c8c',width:2}}
+    ], timeLayout, {responsive:true, scrollZoom:true});
+  } else {
+    Plotly.react('timePlot', [], timeLayout, {responsive:true, scrollZoom:true});
+  }
+
+  // Re-attach click handler
+  const plotEl = document.getElementById('phasePlot');
+  plotEl.removeAllListeners && plotEl.removeAllListeners('plotly_click');
+  plotEl.on('plotly_click', handleClick);
+}
+
+function handleClick(data) {
+  if(!data || !data.points || !data.points.length) return;
+  const pt = data.points[0];
+  const x0 = pt.x, y0 = pt.y;
+  if(!isFinite(x0) || !isFinite(y0)) return;
+  addTrajectory(x0, y0);
+}
+
+function addTrajectory(x0, y0) {
+  const sys = SYSTEMS[currentSystem];
+  const traj = rk4Integrate(sys.f, x0, y0, paramValues, 0.02, 3000);
+  trajectories.push(traj);
+  redrawAll();
+}
+
+function clearTrajectories() {
+  trajectories = [];
+  redrawAll();
+}
+
+function selectSystem(idx) {
+  currentSystem = idx;
+  trajectories = [];
+  const sys = SYSTEMS[currentSystem];
+  document.getElementById('systemTitle').textContent = sys.name;
+  document.getElementById('equationDisplay').textContent = sys.eq;
+  buildSelector();
+  buildSliders();
+  redrawAll();
+}
+
+// =========== INIT ===========
+buildSelector();
+selectSystem(0);
+</script>
+</body>
+</html>
